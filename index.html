@@ -194,3 +194,9 @@ To add Hindi text, expand the language strings in app.js.
 
 --- icons/ --- /* Add two PNG icons named icon-192.png and icon-512.png inside an icons folder. Replace with your artwork. */
 
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./service-worker.js')
+    .then(() => console.log('Service Worker Registered'));
+}
+</script>
