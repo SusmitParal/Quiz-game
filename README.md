@@ -12,3 +12,5 @@ Built with HTML, CSS, and JavaScript. Can be installed as a Progressive Web App 
 - Installable as a PWA — works even without internet.
 
 ## 📂 Project Structure# Quiz-game
+
+Test commit from mobile
