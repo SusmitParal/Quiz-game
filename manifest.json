@@ -1,0 +1,22 @@
+{
+  "name": "Ultimate Quiz Challenge",
+  "short_name": "QuizGame",
+  "description": "An endless, multi-level quiz game with coins, EXP, and offline/online play.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ff9800",
+  "theme_color": "#ff9800",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
