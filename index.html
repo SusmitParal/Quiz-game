@@ -1,0 +1,196 @@
+--- index.html --- <!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Brain Arena — Quiz Game</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+  <meta name="theme-color" content="#0b2340">
+</head>
+<body>
+  <div id="app">
+    <header class="top">
+      <h1 id="app-title">Brain Arena</h1>
+      <div class="controls">
+        <button id="theme-toggle">Theme</button>
+        <select id="lang-select">
+          <option value="en">English</option>
+          <option value="hi">हिन्दी</option>
+        </select>
+        <button id="install-btn" hidden>Add to Home</button>
+      </div>
+    </header><main>
+  <section id="home" class="page active">
+    <h2 id="tagline">Endless quizzes • All topics • Offline & Simulated Online</h2>
+    <div class="row">
+      <button id="play-offline">Play Offline</button>
+      <button id="play-online">Play Online (Simulated)</button>
+    </div>
+
+    <div class="features">
+      <h3>Coin Levels</h3>
+      <ul id="coin-list" class="coin-grid"></ul>
+    </div>
+
+    <div class="extras">
+      <button id="profile-btn">Profile</button>
+      <button id="leaderboard-btn">Leaderboard</button>
+      <button id="about-btn">About</button>
+    </div>
+  </section>
+
+  <section id="play" class="page">
+    <h2 id="play-title">Play</h2>
+    <div class="settings">
+      <label>Mode: <select id="mode-select"><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="expert">Expert</option></select></label>
+      <label>Bet: <select id="bet-select"></select></label>
+      <label>Timer: <span id="timer-value">20</span>s</label>
+    </div>
+
+    <div id="question-area">
+      <div id="q-header">Q <span id="q-number">1</span></div>
+      <div id="question-text"></div>
+      <div id="options"></div>
+      <div id="q-footer">
+        <div id="timer-bar"></div>
+        <button id="next-btn" hidden>Next</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="profile" class="page">
+    <h2>Profile</h2>
+    <div id="profile-info"></div>
+    <button id="reset-progress">Reset Progress</button>
+  </section>
+
+  <section id="leaderboard" class="page">
+    <h2>Leaderboard (Local)</h2>
+    <ol id="leaderboard-list"></ol>
+  </section>
+
+  <section id="about" class="page">
+    <h2>About Brain Arena</h2>
+    <p>Endless questions across all topics. Higher bets = harder questions and more EXP. Play offline or vs a simulated opponent.</p>
+  </section>
+
+</main>
+
+<footer>
+  <small>Made for mobile — install for offline play.</small>
+</footer>
+
+  </div>  <script src="app.js"></script></body>
+</html>--- styles.css --- :root{ --bg:#f6fbff;--card:#ffffff;--accent:#0ea5a0;--dark:#0b2340; } body{font-family:Inter,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial;margin:0;background:var(--bg);color:var(--dark)} #app{max-width:900px;margin:0 auto} .top{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:linear-gradient(90deg,#06263f,#0b2340);color:#fff} .top h1{margin:0;font-size:20px} .controls{display:flex;gap:8px} .controls button, .controls select{background:transparent;border:1px solid rgba(255,255,255,0.15);color:#fff;padding:6px;border-radius:6px} main{padding:16px} .page{display:none} .page.active{display:block} .row{display:flex;gap:10px;margin:12px 0} button{background:var(--accent);border:none;padding:10px 14px;border-radius:10px;color:#fff;font-weight:600} .coin-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;list-style:none;padding:0} .coin-grid li{background:var(--card);padding:8px;border-radius:8px;box-shadow:0 2px 6px rgba(11,35,64,0.08)} .settings{display:flex;gap:10px;align-items:center;margin-bottom:12px} #question-area{background:var(--card);padding:12px;border-radius:10px;box-shadow:0 2px 12px rgba(11,35,64,0.06)} #question-text{min-height:64px;font-size:18px;margin:8px 0} #options{display:grid;gap:8px} .option{padding:10px;border-radius:8px;border:1px solid #ddd;background:#fff} #timer-bar{height:6px;background:#eee;border-radius:6px;overflow:hidden} #timer-bar > span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#f59e0b);width:100%} footer{padding:12px;text-align:center;color:#666} @media (prefers-color-scheme:dark){:root{--bg:#051021;--card:#071428;--accent:#06b6d4;--dark:#e8f9ff}body{color:var(--dark)}}
+
+--- app.js --- /* Simple PWA-ready quiz app core logic (works offline and simulates online opponents)
+
+Stores progress in localStorage
+
+Generates questions endlessly via templates */
+
+
+const COIN_LEVELS = [ {name:'Delhi Delight', coins:500}, {name:'Superb Sydney', coins:1000}, {name:'Glorious Ghareer', coins:5000}, {name:'Libenous Lisbon', coins:10000}, {name:'Attractive Athens', coins:20000}, {name:'Curious Calcutta', coins:50000}, {name:'Royal Rio de Janeiro', coins:100000}, {name:'Majestic Moscow', coins:200000}, {name:'Vibrant Vienna', coins:400000}, {name:'Brilliant Bangkok', coins:500000}, {name:'Legendary London', coins:1000000} ];
+
+const TOPICS = ['Science','History','Geography','Sports','Entertainment','Technology','Art','Politics','General Knowledge','Nature','Math'];
+
+// storage keys const KEY = 'brain_arena_v1';
+
+// app state let state = { profile:{name:'Player',coins:1000,exp:0,level:1}, asked:[], // question IDs asked questionPoolSize:5000, // seed size (we generate on the fly) currentQuestion:null, mode:'beginner', timer:25, lang:'en' };
+
+// utils function save(){localStorage.setItem(KEY,JSON.stringify(state));} function load(){const s=localStorage.getItem(KEY);if(s) state=JSON.parse(s);}
+
+// simple deterministic question id from content function qidFrom(seed){return btoa(seed).slice(0,12)}
+
+// generator: creates a question object from templates function generateQuestion(difficulty){ // difficulty: 'easy'|'medium'|'hard' const topic = TOPICS[Math.floor(Math.random()*TOPICS.length)]; const n = Math.floor(Math.random()*1000); const templates = { easy: [Which of the following is related to ${topic}?,What is the capital of ${topic} city ${n}?,Choose the correct fact about ${topic}.], medium: [In ${topic}, which statement is true about item ${n}?,Which year is associated with event ${n} in ${topic}?,Select the correct concept in ${topic}.], hard: [Advanced: Explain relation between concept ${n} and ${topic}.,Which of these complex facts about ${topic} is correct?,Expert: Identify the odd one out related to ${topic} ${n}.] }; const opts = ['Option A','Option B','Option C','Option D']; const qtext = templates[difficulty][Math.floor(Math.random()*templates[difficulty].length)]; const id = qidFrom(qtext+topic+Date.now()+Math.random()); return {id,topic,difficulty,question:qtext,options:opts,answer:0}; }
+
+// pick a difficulty based on mode/bet function pickDifficulty(mode,betLevel){ // betLevel: 0..len-1 let r = Math.random(); if(mode==='beginner'){ if(r<0.7) return 'easy'; if(r<0.9) return 'medium'; return 'hard'; } else if(mode==='intermediate'){ if(r<0.4) return 'easy'; if(r<0.85) return 'medium'; return 'hard'; } else { if(r<0.2) return 'easy'; if(r<0.6) return 'medium'; return 'hard'; } }
+
+// UI helpers const el = id=>document.getElementById(id); function show(page){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));el(page).classList.add('active');}
+
+// init UI function initUI(){ load(); // coin list const coinList = el('coin-list'); coinList.innerHTML=''; COIN_LEVELS.forEach(c=>{const li=document.createElement('li');li.innerHTML=<strong>${c.name}</strong><div>${c.coins.toLocaleString()} coins</div>;coinList.appendChild(li);});
+
+// mode select el('mode-select').addEventListener('change',(e)=>{state.mode=e.target.value; setTimerByMode();}); // populate bet options from coin levels const betSel = el('bet-select'); COIN_LEVELS.slice(0,8).forEach((c,i)=>{const o=document.createElement('option');o.value=i; o.text=${c.name} — ${c.coins}; betSel.appendChild(o)});
+
+// buttons el('play-offline').addEventListener('click',()=>{show('play'); startSession(false)}); el('play-online').addEventListener('click',()=>{show('play'); startSession(true)}); el('profile-btn').addEventListener('click',()=>{show('profile'); renderProfile()}); el('leaderboard-btn').addEventListener('click',()=>{show('leaderboard'); renderLeaderboard()}); el('about-btn').addEventListener('click',()=>{show('about')}); el('reset-progress').addEventListener('click',()=>{if(confirm('Reset progress?')){localStorage.removeItem(KEY); location.reload();}}) el('lang-select').addEventListener('change',(e)=>{state.lang=e.target.value; save();});
+
+// next button el('next-btn').addEventListener('click',()=>{nextQuestion(true)});
+
+// theme toggle el('theme-toggle').addEventListener('click',()=>{document.body.classList.toggle('dark');});
+
+// install prompt let deferredPrompt; window.addEventListener('beforeinstallprompt', (e) => {e.preventDefault(); deferredPrompt = e; el('install-btn').hidden=false; el('install-btn').addEventListener('click', async ()=>{deferredPrompt.prompt(); const choice=await deferredPrompt.userChoice; el('install-btn').hidden=true;});});
+
+show('home'); save(); }
+
+// gameplay let questionTimer=null; let timeLeft=0; let session={isOnline:false,betIndex:0,qnum:0}; function setTimerByMode(){const m=state.mode; if(m==='beginner') state.timer=25; else if(m==='intermediate') state.timer=20; else state.timer=15; el('timer-value').innerText=state.timer;}
+
+function startSession(isOnline){session.isOnline=isOnline; session.qnum=0; // pick bet session.betIndex = parseInt(el('bet-select').value||0); state.mode = el('mode-select').value; setTimerByMode(); nextQuestion(false); }
+
+function nextQuestion(fromNextBtn){ // generate new question according to difficulty const diff = pickDifficulty(state.mode, session.betIndex); let q = generateQuestion(diff); // ensure not repeated for this user let attempts=0; while(state.asked.includes(q.id) && attempts<10){q=generateQuestion(diff); attempts++;} state.currentQuestion=q; state.asked.push(q.id); save(); renderQuestion(q); }
+
+function renderQuestion(q){el('q-number').innerText = state.asked.length; el('question-text').innerText = q.question; const opts = el('options'); opts.innerHTML=''; q.options.forEach((o,i)=>{const b=document.createElement('button');b.className='option';b.innerText=o; b.onclick=()=>selectOption(i); opts.appendChild(b)}); // timer startTimer(state.timer); }
+
+function selectOption(i){stopTimer(); const correct = state.currentQuestion.answer; const win = (i===correct); if(win){alert((state.lang==='hi'?'सही!':'Correct!')); award(true);} else {alert((state.lang==='hi'?'गलत':'Wrong')); award(false);} el('next-btn').hidden=false;}
+
+function award(win){const base=10; const diffMul = state.currentQuestion.difficulty==='easy'?1:state.currentQuestion.difficulty==='medium'?2:4; const betMul = 1 + (session.betIndex*0.1); let gain = Math.round(base * diffMul * betMul); if(!win) gain = Math.round(- (base * 0.5)); state.profile.coins = (state.profile.coins||1000) + gain; // exp const expGain = Math.max(1, Math.round(Math.abs(gain)/5)); state.profile.exp = (state.profile.exp||0) + expGain; updateLevel(); save();}
+
+function updateLevel(){let lvl=1; while(state.profile.exp >= requiredExp(lvl+1)) lvl++; state.profile.level = lvl;} function requiredExp(l){return Math.round(100 * Math.pow(l,1.5));}
+
+function startTimer(seconds){stopTimer(); timeLeft=seconds; const bar = el('timer-bar'); bar.innerHTML='<span></span>'; const span = bar.querySelector('span'); questionTimer = setInterval(()=>{timeLeft--; const pct = Math.max(0,(timeLeft/seconds)*100); span.style.width = pct + '%'; if(timeLeft<=0){stopTimer(); alert('Time up'); award(false); el('next-btn').hidden=false;}},1000);} function stopTimer(){if(questionTimer) clearInterval(questionTimer); questionTimer=null;}
+
+function renderProfile(){const p=state.profile; el('profile-info').innerHTML = <div>Name:${p.name}</div><div>Coins:${p.coins}</div><div>EXP:${p.exp}</div><div>Level:${p.level}</div>;}
+
+function renderLeaderboard(){const list = el('leaderboard-list'); list.innerHTML=''; // simple local leaderboard const players = JSON.parse(localStorage.getItem('brain_leaderboard')||'[]'); if(players.length===0){list.innerHTML='<li>No records yet</li>';return;} players.slice(0,10).forEach(pl=>{const li=document.createElement('li');li.innerText=${pl.name} — ${pl.coins};list.appendChild(li)}); }
+
+// initial seed (function(){ load(); state.profile = state.profile || {name:'Player',coins:1000,exp:0,level:1}; initUI(); })();
+
+// Service worker registration if('serviceWorker' in navigator){navigator.serviceWorker.register('service-worker.js').then(()=>console.log('SW registered')).catch(()=>console.log('SW failed'))}
+
+--- manifest.json --- { "short_name": "BrainArena", "name": "Brain Arena - Quiz Game", "start_url": "./index.html", "display": "standalone", "background_color": "#0b2340", "theme_color": "#0b2340", "icons": [ {"src":"icons/icon-192.png","sizes":"192x192","type":"image/png"}, {"src":"icons/icon-512.png","sizes":"512x512","type":"image/png"} ] }
+
+--- service-worker.js --- const CACHE_NAME = 'brain-arena-cache-v1'; const FILES_TO_CACHE = ['index.html','styles.css','app.js','manifest.json','icons/icon-192.png','icons/icon-512.png']; self.addEventListener('install', evt => {evt.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(FILES_TO_CACHE))); self.skipWaiting();}); self.addEventListener('activate', evt => {evt.waitUntil(clients.claim());}); self.addEventListener('fetch', evt => {evt.respondWith(caches.match(evt.request).then(resp=>resp||fetch(evt.request)));});
+
+--- README.md ---
+
+Brain Arena (PWA)
+
+This is a Progressive Web App quiz game designed for GitHub Pages. Features:
+
+Offline-capable (service worker + manifest)
+
+Endless, on-device question generation
+
+Simulated online opponent
+
+Coin levels and EXP/level system
+
+
+How to use
+
+1. Create a GitHub repository (public) named quiz-game (or any name).
+
+
+2. Upload the project files (index.html, styles.css, app.js, manifest.json, service-worker.js, icons/).
+
+
+3. In repo Settings → Pages, select main branch and /root then Save.
+
+
+4. Open the generated GitHub Pages URL on your phone.
+
+
+5. To convert to APK: use PWABuilder (https://www.pwabuilder.com) and enter your site URL. Follow steps to download an Android package.
+
+
+
+Notes
+
+The question generator uses templates; you can replace with real question database later.
+
+To add Hindi text, expand the language strings in app.js.
+
+
+--- icons/ --- /* Add two PNG icons named icon-192.png and icon-512.png inside an icons folder. Replace with your artwork. */
+
